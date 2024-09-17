@@ -1,0 +1,19 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    #address-cells = <1>;
+    #size-cells = <1>;
+    
+    compatible = "example,device-tree";
+
+    memory_log_1: memory-log@0 {
+        compatible = "msft,memory-log";
+        reg = <0x1000 0x1000>; /* address and size */
+    };
+
+    memory_log_2: memory-log@1 {
+        compatible = "msft,memory-log";
+        reg = <0x2000 0x2000>; /* address and size */
+    };
+};

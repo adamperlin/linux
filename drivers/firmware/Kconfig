@@ -307,6 +307,12 @@ config MSFT_FW_LOG
 	tristate "Microsoft firmware log driver"
 	depends on SYSFS
 	help
+		Test firmware log driver
+
+config SKELETON
+	tristate "microsoft skeleton driver"
+	help
+		Test driver
 
 source "drivers/firmware/arm_ffa/Kconfig"
 source "drivers/firmware/broadcom/Kconfig"
