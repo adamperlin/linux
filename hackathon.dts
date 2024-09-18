@@ -2,18 +2,17 @@
 /plugin/;
 
 / {
+    compatible = "arm";
     #address-cells = <1>;
     #size-cells = <1>;
-    
-    compatible = "example,device-tree";
 
-    memory_log_1: memory-log@0 {
+    memory_log_1: memory@10000000 {
         compatible = "msft,memory-log";
-        reg = <0x1000 0x1000>; /* address and size */
+        reg = <(0x10000000) (0x1000)>; /* address and size */
     };
 
-    memory_log_2: memory-log@1 {
+    memory_log_2: memory@20000000 {
         compatible = "msft,memory-log";
-        reg = <0x2000 0x2000>; /* address and size */
+        reg = <(0x20000000) (0x1000)>; /* address and size */
     };
 };
