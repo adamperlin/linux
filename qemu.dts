@@ -20,6 +20,22 @@
 		device_type = "memory";
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		elog: memory@41000000 {
+			compatible = "msft,memory-log";
+			reg = <0x0 0x41000000 0x0 0x4000>;
+		};
+
+		nmclog: memory@41004000 {
+			reg = <0x0 0x41004000 0x0 0x3000>;
+		};
+	
+	};
+
 	platform@c000000 {
 		interrupt-parent = <0x8002>;
 		ranges = <0x00 0x00 0xc000000 0x2000000>;
@@ -384,16 +400,16 @@
 		kaslr-seed = <0xbcbfa6b5 0xa3411ba>;
 	};
 
-	e-log@3e8f0000 {
+	elog@41000000 {
 		compatible = "msft,memory-log";
-		reg = <0x00 0x3e8f0000 0x00 0x2000>;
-		label = "e-log";
+		reg = <0x00 0x41000000 0x00 0x4000>;
+		label = "elog";
 	};
 
-	nmc-log@3e8f2000 {
+	nmclog@41004000 {
 		compatible = "msft,memory-log";
-		reg = <0x00 0x3e8f2000 0x00 0x2000>;
-		label = "nmc-log";
+		reg = <0x00 0x41004000 0x00 0x3000>;
+		label = "nmclog";
 	};
 
 };

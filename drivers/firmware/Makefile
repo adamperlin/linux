@@ -27,6 +27,7 @@ obj-$(CONFIG_TRUSTED_FOUNDATIONS) += trusted_foundations.o
 obj-$(CONFIG_TURRIS_MOX_RWTM)	+= turris-mox-rwtm.o
 obj-$(CONFIG_MSFT_FW_LOG)   += msft_fwlog.o
 obj-$(CONFIG_SKELETON)   += skeleton.o
+obj-$(CONFIG_MSFT_FW_LOG_V2) += msft_fwlog_v2.o
 
 obj-y				+= arm_ffa/
 obj-y				+= arm_scmi/
