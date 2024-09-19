@@ -18,7 +18,7 @@ static int skeleton_probe(struct platform_device *pdev)
     const struct device_node *np = dev->of_node;
     u32 reg;
 
-    pr_debug("called skeleton_probe\n");
+    pr_info("called skeleton_probe\n");
 
     /* Read the 'reg' property from the device tree */
     if (of_property_read_u32(np, "reg", &reg)) {
