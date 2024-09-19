@@ -6,6 +6,7 @@
  *
  */
 
+#include "linux/device.h"
 #include "linux/types.h"
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -126,16 +127,20 @@ static int fw_log_probe(struct platform_device *pdev)
 
     /* Register node-specific data with the platform_device */
     struct fw_log_device_data *dev_data;
+    /* This memory is registered with the device and freed automatically */
     dev_data = devm_kzalloc(dev, sizeof(struct fw_log_device_data), GFP_KERNEL);
-    if (!dev_data)
-        return -ENOMEM;
+    if (!dev_data) {
+        ret = -ENOMEM;
+        goto err;
+    }
 
     platform_set_drvdata(pdev, dev_data);
 
     /* Parse DT node */
     if (parse_dt_node(np, dev, &addr, &size, &label)) {
         dev_err(dev, "Failed to parse DT node\n");
-        return -EINVAL;
+        ret = -EINVAL;
+        goto err;
     }
 
     dev_info(dev, "Probing memory-log device\n\taddr: 0x%x\n\tsize: 0x%x\n\tname: %s\n", addr, size, label);
@@ -144,7 +149,8 @@ static int fw_log_probe(struct platform_device *pdev)
     void *fwlog_vaddr = memremap(addr, size, MEMREMAP_WB);
     if (!fwlog_vaddr) {
         pr_err("%s: memremap failed", __func__);
-        return -ENOMEM;
+        ret = -ENOMEM;
+        goto err;
     }
 
     pr_info("%s: mapped %s to vaddr %p\n", __func__, label, fwlog_vaddr);
@@ -167,24 +173,27 @@ static int fw_log_probe(struct platform_device *pdev)
     ret = sysfs_create_bin_file(firmware_kobj, &dev_data->attr);
     if (ret)
         pr_err("%s: failed to create sysfs bin file\n", __func__);
-        return ret;
+        goto err_sysfs;
 
-// use gotos to free devm and memunmap on errors
-
-    return 0; 
+err_sysfs:
+    memunmap(fwlog_vaddr);
+err:
+    return ret; 
 }
 
-/* Remove function: called when device is removed */
 static int fw_log_remove(struct platform_device *pdev)
 {
-    /* Clean up resources allocated during probe */
+       
+    struct device *dev = &pdev->dev;
+    struct fw_log_device_data *dev_data = dev_get_drvdata(dev);
+
+    if (dev_data && dev_data->addr) {
+        memunmap(dev_data->addr);
+    }
 
     dev_info(&pdev->dev, "Device removed\n");
     return 0;
 }
-
-
-
 
 /* Platform driver structure */
 static struct platform_driver fw_log_driver = {
