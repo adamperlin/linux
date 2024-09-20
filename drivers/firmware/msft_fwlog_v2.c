@@ -20,6 +20,9 @@
 #include <linux/memblock.h>
 #include <linux/sysfs.h>
 #include <linux/kobject.h>
+#include <linux/string.h>
+
+#define FW_LOG_SIGNATURE_LEN 4
 
 /* Match table for of_platform binding */
 static const struct of_device_id fw_log_dt_ids[] = {
@@ -85,8 +88,7 @@ static int fw_log_mmap(struct file *file, struct kobject *kobj,
 			       len, vma->vm_page_prot);
 }
 
-
-static int parse_dt_node(struct device_node *np, struct device *dev, u64 *addr, u64 *size, const char **label) {
+static int parse_dt_node(struct device_node *np, struct device *dev, u64 *addr, u64 *size, const char **label, const char **signature) {
     int addr_cells, size_cells;
     int len;
     const __be32 *reg;
@@ -110,6 +112,13 @@ static int parse_dt_node(struct device_node *np, struct device *dev, u64 *addr, 
         return -EINVAL;
     }
 
+    
+    *signature = of_get_property(np, "signature", &len);
+    if (!signature) {
+        dev_err(dev, "Failed to read 'signature' property\n");
+        return -EINVAL;
+    }
+
     return 0;
 }
 
@@ -121,9 +130,10 @@ static int fw_log_probe(struct platform_device *pdev)
 {
     struct device *dev = &pdev->dev;
     struct device_node *np = dev->of_node;
-    const char *label;
+    const char *label, *signature;
     u64 addr, size;
     int ret;
+    u32 data;
 
     /* Register node-specific data with the platform_device */
     struct fw_log_device_data *dev_data;
@@ -137,13 +147,13 @@ static int fw_log_probe(struct platform_device *pdev)
     platform_set_drvdata(pdev, dev_data);
 
     /* Parse DT node */
-    if (parse_dt_node(np, dev, &addr, &size, &label)) {
+    if (parse_dt_node(np, dev, &addr, &size, &label, &signature)) {
         dev_err(dev, "Failed to parse DT node\n");
         ret = -EINVAL;
         goto err;
     }
 
-    dev_info(dev, "Probing memory-log device\n\taddr: 0x%x\n\tsize: 0x%x\n\tname: %s\n", addr, size, label);
+    dev_info(dev, "Probing memory-log device '%s' [0x%x - 0x%x)\n", label, addr, addr + size);
 
     /* Map the memory_log into the address space */
     void *fwlog_vaddr = memremap(addr, size, MEMREMAP_WB);
@@ -159,6 +169,15 @@ static int fw_log_probe(struct platform_device *pdev)
     dev_data->paddr = addr;
     dev_data->size = size;
 
+    /* Validate the memory log signature */
+    data = readl(fwlog_vaddr);
+    pr_info("%s: Checking log signature. Expected '%s', found '%08x'", __func__, signature, data);
+    // if (data != *(u32 *)signature) {
+    //     pr_err("%s: failed to validate log signature. Expected '%s', found '%08x'", __func__, signature, data);
+    //     ret = -EINVAL;
+    //     goto err;
+    // }
+    
     /* Create the sysfs bin file for the device */
     dev_data->attr = (struct bin_attribute) {
         .attr = {
@@ -170,7 +189,7 @@ static int fw_log_probe(struct platform_device *pdev)
         .size = size,
     };
 
-    ret = sysfs_create_bin_file(firmware_kobj, &dev_data->attr);
+    ret = sysfs_create_bin_file(&pdev->dev.kobj, &dev_data->attr);
     if (ret)
         pr_err("%s: failed to create sysfs bin file\n", __func__);
         goto err_sysfs;

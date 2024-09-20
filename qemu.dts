@@ -25,15 +25,9 @@
 		#size-cells = <2>;
 		ranges;
 
-		elog: memory@41000000 {
-			compatible = "msft,memory-log";
-			reg = <0x0 0x41000000 0x0 0x4000>;
+		overlake: memory@41000000 {
+			reg = <0x0 0x41000000 0x0 0x7000>;
 		};
-
-		nmclog: memory@41004000 {
-			reg = <0x0 0x41004000 0x0 0x3000>;
-		};
-	
 	};
 
 	platform@c000000 {
@@ -403,13 +397,15 @@
 	elog@41000000 {
 		compatible = "msft,memory-log";
 		reg = <0x00 0x41000000 0x00 0x4000>;
-		label = "elog";
+		label = "msft_fwlog";
+		signature = "ELOG";
 	};
 
 	nmclog@41004000 {
 		compatible = "msft,memory-log";
 		reg = <0x00 0x41004000 0x00 0x3000>;
-		label = "nmclog";
+		label = "nmc_fwlog";
+		signature = "NMCL";
 	};
 
 };
