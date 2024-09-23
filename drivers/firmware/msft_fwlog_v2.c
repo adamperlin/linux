@@ -230,7 +230,7 @@ static int fw_log_remove(struct platform_device *pdev)
 
     if (dev_data && dev_data->addr) {
         memunmap(dev_data->addr);
-        sysfs_remove_bin_file(&pdev->dev.kobj, &dev_data->attr);
+        sysfs_remove_bin_file(firmware_kobj, &dev_data->attr);
     }
 
     dev_info(&pdev->dev, "Device removed\n");
