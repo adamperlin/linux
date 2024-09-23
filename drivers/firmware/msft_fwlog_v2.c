@@ -7,6 +7,7 @@
  */
 
 #include "linux/device.h"
+#include "linux/io.h"
 #include "linux/types.h"
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -88,6 +89,8 @@ static int fw_log_mmap(struct file *file, struct kobject *kobj,
 			       len, vma->vm_page_prot);
 }
 
+
+/* Parses msft,memory-log nodes for address, size, log name, and log signature */
 static int parse_dt_node(struct device_node *np, struct device *dev, u64 *addr, u64 *size, const char **label, const char **signature) {
     int addr_cells, size_cells;
     int len;
@@ -122,18 +125,26 @@ static int parse_dt_node(struct device_node *np, struct device *dev, u64 *addr, 
     return 0;
 }
 
-/* Probe function: called for each matching device in the DTS
- * 
- * Creates a sysfs bin file for each msft,memory-log compatible device
- */
+/* Reads the 4 byte signature at the beginning of a memory log, returning the data in a char buffer */
+static void get_signature(void *addr, char *sig) {
+    u32 data = readl(addr);
+
+    sig[0] = (char)(data & 0xFF);
+    sig[1] = (char)((data >> 8) & 0xFF);
+    sig[2] = (char)((data >> 16) & 0xFF);
+    sig[3] = (char)((data >> 24) & 0xFF);
+    sig[4] = '\0';
+}
+
+/* Creates memory-mapped sysfs bin files for each probed msft,memory-log device */
 static int fw_log_probe(struct platform_device *pdev)
 {
     struct device *dev = &pdev->dev;
     struct device_node *np = dev->of_node;
     const char *label, *signature;
     u64 addr, size;
+    char actual_sig[5];
     int ret;
-    u32 data;
 
     /* Register node-specific data with the platform_device */
     struct fw_log_device_data *dev_data;
@@ -148,12 +159,12 @@ static int fw_log_probe(struct platform_device *pdev)
 
     /* Parse DT node */
     if (parse_dt_node(np, dev, &addr, &size, &label, &signature)) {
-        dev_err(dev, "Failed to parse DT node\n");
+        dev_err(dev, "failed to parse DT node\n");
         ret = -EINVAL;
         goto err;
     }
 
-    dev_info(dev, "Probing memory-log device '%s' [0x%x - 0x%x)\n", label, addr, addr + size);
+    dev_info(dev, "registering memory-log '%s' [0x%x - 0x%x)\n", label, addr, addr + size);
 
     /* Map the memory_log into the address space */
     void *fwlog_vaddr = memremap(addr, size, MEMREMAP_WB);
@@ -170,13 +181,18 @@ static int fw_log_probe(struct platform_device *pdev)
     dev_data->size = size;
 
     /* Validate the memory log signature */
-    data = readl(fwlog_vaddr);
-    pr_info("%s: Checking log signature. Expected '%s', found '%08x'", __func__, signature, data);
-    // if (data != *(u32 *)signature) {
-    //     pr_err("%s: failed to validate log signature. Expected '%s', found '%08x'", __func__, signature, data);
-    //     ret = -EINVAL;
-    //     goto err;
-    // }
+    get_signature(fwlog_vaddr, (char *)actual_sig);
+    if (strncmp(signature, actual_sig, 4)) {
+        #ifdef CONFIG_MSFT_FW_LOG_STRICT_SIG_CHECKS
+            pr_err("%s: found invalid log signature: '%s', expected: '%s'\n", __func__, actual_sig, signature);
+            ret = -EINVAL;
+            goto err;
+        #else
+            pr_warn("%s: found invalid log signature: '%s', expected: '%s'\n", __func__, actual_sig, signature);
+        #endif
+    } else {
+        pr_info("%s: found valid log signature: '%s'\n", __func__, actual_sig);
+    }
     
     /* Create the sysfs bin file for the device */
     dev_data->attr = (struct bin_attribute) {
@@ -189,10 +205,16 @@ static int fw_log_probe(struct platform_device *pdev)
         .size = size,
     };
 
-    ret = sysfs_create_bin_file(&pdev->dev.kobj, &dev_data->attr);
-    if (ret)
+    /* Create binfile in /sys/firmware for backwards compat with v1 */
+    ret = sysfs_create_bin_file(firmware_kobj, &dev_data->attr);
+    if (ret) {
         pr_err("%s: failed to create sysfs bin file\n", __func__);
         goto err_sysfs;
+    }
+
+    pr_info("%s: created sysfs bin file: %s\n", __func__, dev_data->attr.attr.name);
+
+    return 0;
 
 err_sysfs:
     memunmap(fwlog_vaddr);
@@ -200,14 +222,15 @@ err:
     return ret; 
 }
 
+/* Cleans up each platform device when that driver is unloaded */
 static int fw_log_remove(struct platform_device *pdev)
 {
-       
     struct device *dev = &pdev->dev;
     struct fw_log_device_data *dev_data = dev_get_drvdata(dev);
 
     if (dev_data && dev_data->addr) {
         memunmap(dev_data->addr);
+        sysfs_remove_bin_file(&pdev->dev.kobj, &dev_data->attr);
     }
 
     dev_info(&pdev->dev, "Device removed\n");
@@ -230,11 +253,11 @@ static int __init fw_log_init(void)
     int ret;
 
     if ((ret = platform_driver_register(&fw_log_driver))) {
-        pr_err("%s: Failed to register FW log platform driver: %d\n", __func__, ret);
+        pr_err("%s: failed to register FW log platform driver: %d\n", __func__, ret);
         return ret;
     }
 
-    pr_info("%s: Registered FW log platform driver\n", __func__);
+    pr_info("%s: registered FW log platform driver\n", __func__);
     return 0;
 }
 

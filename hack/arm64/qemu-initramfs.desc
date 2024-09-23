@@ -1,0 +1,10 @@
+dir     /bin                                          0755 0 0
+dir     /sys                                          0755 0 0
+dir     /dev                                          0755 0 0
+dir     /sys/firmware                                 0755 0 0
+file    /bin/busybox  hack/arm64/busybox              0755 0 0
+slink   /bin/sh       /bin/busybox                    0755 0 0
+file    /init         hack/qemu-init.sh               0755 0 0
+
+file    /skeleton.ko  drivers/firmware/skeleton.ko    0755 0 0
+file /msft_fwlog_v2.ko drivers/firmware/msft_fwlog_v2.ko 0755 0 0

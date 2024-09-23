@@ -320,6 +320,13 @@ config MSFT_FW_LOG_V2
 	help
 		Creates sysfs bin files for memory logs
 
+config MSFT_FW_LOG_STRICT_SIG_CHECKS
+	bool "Enable strict signature validation in MSFT fwlog driver v2"
+	depends on MSFT_FW_LOG_V2
+	default n
+	help
+		Enable this option to reject log buffers with invalid signatures
+
 source "drivers/firmware/arm_ffa/Kconfig"
 source "drivers/firmware/broadcom/Kconfig"
 source "drivers/firmware/cirrus/Kconfig"
