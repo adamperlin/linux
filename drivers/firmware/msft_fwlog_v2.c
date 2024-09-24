@@ -174,8 +174,6 @@ static int fw_log_probe(struct platform_device *pdev)
         goto err;
     }
 
-    pr_info("%s: mapped %s to vaddr %p\n", __func__, label, fwlog_vaddr);
-
     dev_data->addr = fwlog_vaddr;
     dev_data->paddr = addr;
     dev_data->size = size;
