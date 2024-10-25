@@ -398,14 +398,14 @@
 	elog@41000000 {
 		compatible = "msft,memory-log";
 		reg = <0x00 0x41000000 0x00 0x40000>;
-		label = "msft_fwlog";
+		label = "elog";
 		signature = "ELOG";
 	};
 
 	nmclog@41004000 {
 		compatible = "msft,memory-log";
 		reg = <0x00 0x41004000 0x00 0x40000>;
-		label = "nmc_fwlog";
+		label = "nmclog";
 		signature = "NMCL";
 	};
 
